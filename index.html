@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AWDF Practicals</title>
+<meta name="description" content="Advanced Web Development Frameworks (ITUE301): 13 practicals, from a React component tree to a containerised, tested, AI-assisted full-stack app." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ── Tokens: three colours. Everything else is a tint of these. ───────────── */
+  :root {
+    --paper: #f5f5f2;
+    --ink: #141414;
+    --accent: #ff5b1f;
+
+    --ink-60: color-mix(in srgb, var(--ink) 60%, transparent);
+    --ink-45: color-mix(in srgb, var(--ink) 45%, transparent);
+    --ink-12: color-mix(in srgb, var(--ink) 12%, transparent);
+    --ink-8: color-mix(in srgb, var(--ink) 8%, transparent);
+    --ink-4: color-mix(in srgb, var(--ink) 4%, transparent);
+    --surface: color-mix(in srgb, var(--ink) 2.5%, var(--paper));
+    --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    --radius: 20px;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) { --paper: #111110; --ink: #f2f2ee; color-scheme: dark; }
+  }
+  :root[data-theme='dark'] { --paper: #111110; --ink: #f2f2ee; color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .page { max-width: 1160px; margin: 0 auto; padding: 24px 20px 64px; }
+
+  /* ── Top bar ───────────────────────────────────────────────────────────── */
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+  .brand-mark { width: 22px; height: 22px; border-radius: 7px; background: var(--ink); display: grid; place-items: center; }
+  .brand-mark::after { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; cursor: pointer;
+    background: transparent; border: 1px solid var(--ink-12);
+    transition: background-color 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ── Live status (pings localhost:3001-3013) ─────────────────────────── */
+  .bar-end { display: flex; align-items: center; gap: 8px; }
+  .status {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--ink-8); font-size: 12px; color: var(--ink-60); font-variant-numeric: tabular-nums;
+  }
+  .status code { font: 11px var(--mono); color: var(--ink); }
+  .d-body .status { margin: 0; width: max-content; max-width: 100%; }
+  @media (max-width: 560px) { #status code { display: none; } }
+  .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-12); transition: background-color 300ms var(--ease-out), box-shadow 300ms var(--ease-out); }
+  .num .live-dot { margin-left: 8px; vertical-align: 1px; }
+  .is-live .live-dot, .status.on .live-dot { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* ── Filters (sliding pill) ───────────────────────────────────────────── */
+  .filters {
+    position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
+    background: var(--ink-4); border: 1px solid var(--ink-8); max-width: 100%; overflow-x: auto; scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter {
+    position: relative; z-index: 1; border: 0; background: none; cursor: pointer; white-space: nowrap;
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--ink-60);
+    transition: color 200ms var(--ease-out);
+  }
+  .filter[aria-pressed='true'] { color: var(--paper); }
+  .filter-pill {
+    position: absolute; top: 3px; left: 0; height: calc(100% - 6px); border-radius: 999px; background: var(--ink);
+    transition: transform 300ms var(--ease-drawer), width 300ms var(--ease-drawer);
+  }
+
+  /* ── Bento grid ───────────────────────────────────────────────────────── */
+  .grid {
+    display: grid; gap: 12px; margin-top: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: minmax(218px, auto);
+    grid-template-areas:
+      'hero hero p1   p2'
+      'hero hero p3   p3'
+      'p4   p5   p6   p6'
+      'p7   p7   p6   p6'
+      'p8   p8   p9   p10'
+      'p11  p12  p13  p13';
+  }
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas: 'hero hero' 'p1 p2' 'p3 p3' 'p4 p5' 'p6 p6' 'p7 p7' 'p8 p8' 'p9 p10' 'p11 p12' 'p13 p13';
+    }
+  }
+  @media (max-width: 560px) {
+    .grid {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'hero' 'p1' 'p2' 'p3' 'p4' 'p5' 'p6' 'p7' 'p8' 'p9' 'p10' 'p11' 'p12' 'p13';
+    }
+  }
+
+  .tile {
+    position: relative; border-radius: var(--radius); background: var(--surface);
+    border: 1px solid var(--ink-8); overflow: hidden;
+  }
+
+  /* Hero */
+  .hero { grid-area: hero; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; padding: 28px; }
+  .eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: var(--ink-60); display: flex; gap: 8px; align-items: center; }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .hero h1 { margin: 14px 0 0; font-size: clamp(34px, 5vw, 54px); line-height: 0.98; letter-spacing: -0.045em; font-weight: 600; }
+  .hero h1 em { font-style: normal; color: var(--ink-45); }
+  .hero p { margin: 14px 0 0; max-width: 42ch; color: var(--ink-60); font-size: 15px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink-8); padding-top: 18px; gap: 12px; }
+  .stat b { display: block; font-size: 26px; letter-spacing: -0.03em; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--ink-60); }
+  .stat:first-child b { color: var(--accent); }
+
+  /* Practical cards */
+  .card {
+    display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 20px;
+    text-align: left; cursor: pointer; width: 100%;
+    transition: border-color 200ms var(--ease-out), transform 160ms var(--ease-out), opacity 300ms var(--ease-out), filter 300ms var(--ease-out);
+  }
+  .card:active { transform: scale(0.985); }
+  .card.dim { opacity: 0.28; filter: saturate(0); }
+  .card-top { display: flex; align-items: center; justify-content: space-between; }
+  .num { font: 500 12px/1 var(--mono); color: var(--ink-45); font-variant-numeric: tabular-nums; }
+  .tag { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--ink-12); color: var(--ink-60); }
+  .card h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
+  .card p { margin: 4px 0 0; font-size: 13px; color: var(--ink-60); line-height: 1.45; }
+  .open-hint {
+    position: absolute; right: 16px; bottom: 16px; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--ink); color: var(--paper);
+    opacity: 0; transform: scale(0.8); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  }
+  .open-hint svg { width: 12px; height: 12px; }
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover { border-color: var(--ink-12); }
+    .card:hover .open-hint, .card:focus-visible .open-hint { opacity: 1; transform: scale(1); }
+    .icon-btn:hover { background: var(--ink-4); }
+    .filter:not([aria-pressed='true']):hover { color: var(--ink); }
+  }
+
+  .viz { flex: 1; display: flex; align-items: center; min-height: 72px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+
+  /* 01: component tree */
+  .tree { display: grid; gap: 6px; width: 100%; }
+  .tree .node { padding: 5px 9px; border-radius: 8px; border: 1px solid var(--ink-12); font: 500 11px var(--mono); width: max-content; background: var(--paper); }
+  .tree .root { border-color: var(--ink); }
+  .tree .kids { display: flex; flex-wrap: wrap; gap: 5px; padding-left: 14px; border-left: 1px solid var(--ink-12); margin-left: 10px; }
+  .tree .kids .node { transition: transform 300ms var(--ease-out), border-color 300ms var(--ease-out); }
+  .card:hover .tree .kids .node { border-color: var(--ink-45); }
+  .card:hover .tree .kids .node:nth-child(1) { transform: translateY(-2px); transition-delay: 0ms; }
+  .card:hover .tree .kids .node:nth-child(2) { transform: translateY(-2px); transition-delay: 40ms; }
+  .card:hover .tree .kids .node:nth-child(3) { transform: translateY(-2px); transition-delay: 80ms; }
+  .card:hover .tree .kids .node:nth-child(4) { transform: translateY(-2px); transition-delay: 120ms; }
+
+  /* 02: routes */
+  .routes { position: relative; display: grid; gap: 4px; width: 100%; }
+  .route { position: relative; z-index: 1; display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 8px; font: 11px var(--mono); color: var(--ink-60); }
+  .route b { font-weight: 500; color: var(--ink); }
+  .route-hl { position: absolute; left: 0; top: 0; width: 100%; height: 27px; border-radius: 8px; background: var(--paper); border: 1px solid var(--ink-12); transition: transform 450ms var(--ease-drawer); }
+  .card:hover .route-hl { transform: translateY(62px); }
+
+  /* 03: request states */
+  .states { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+  .state { border-radius: 12px; border: 1px solid var(--ink-8); background: var(--paper); padding: 10px; display: grid; gap: 8px; align-content: start; min-height: 86px; }
+  .state small { font: 500 10px var(--mono); color: var(--ink-45); text-transform: uppercase; letter-spacing: 0.04em; }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink-12); border-top-color: var(--accent); animation: spin 900ms linear infinite; animation-play-state: paused; }
+  .card:hover .spin { animation-play-state: running; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err { font-size: 11px; color: var(--accent); font-weight: 500; }
+  .retry { font-size: 10px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--ink-12); width: max-content; }
+  .line { height: 6px; border-radius: 3px; background: var(--ink-12); }
+  .line.short { width: 60%; }
+
+  /* 04: endpoints */
+  .endpoints { display: grid; gap: 5px; width: 100%; font: 11px var(--mono); }
+  .ep { display: grid; grid-template-columns: 52px 1fr auto; gap: 6px; align-items: center; }
+  .verb { font-weight: 600; }
+  .code { color: var(--ink-45); }
+  .ep:nth-child(2) .verb { color: var(--accent); }
+
+  /* 05: schema */
+  .schema { font: 11px/1.7 var(--mono); color: var(--ink-60); width: 100%; }
+  .schema b { color: var(--ink); font-weight: 500; }
+  .schema i { font-style: normal; color: var(--accent); }
+
+  /* 06: full-stack flow */
+  .flow { width: 100%; display: grid; gap: 18px; }
+  .flow-row { display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 10px; }
+  .box { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--ink-12); background: var(--paper); display: grid; gap: 2px; }
+  .box b { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .box span { font: 10px var(--mono); color: var(--ink-45); }
+  .wire { position: relative; height: 1px; background: var(--ink-12); }
+  .wire::after {
+    content: ''; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    opacity: 0; transition: opacity 200ms;
+  }
+  .card:hover .wire::after { opacity: 1; animation: travel 1400ms var(--ease-drawer) infinite; }
+  .card:hover .wire.second::after { animation-delay: 400ms; }
+  @keyframes travel { from { left: 0; } to { left: calc(100% - 7px); } }
+  .flow-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 10.5px var(--mono); padding: 4px 9px; border-radius: 999px; border: 1px solid var(--ink-12); color: var(--ink-60); background: var(--paper); }
+  .chip.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+  .mini { display: grid; gap: 6px; }
+  .mini-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px;
+    border: 1px solid var(--ink-8); background: var(--paper); font-size: 12.5px;
+    transition: transform 300ms var(--ease-out), opacity 300ms var(--ease-out);
+  }
+  .mini-row .cb { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink-45); flex-shrink: 0; }
+  .mini-row.done .cb { background: var(--accent); border-color: var(--accent); }
+  .mini-row.done .t { text-decoration: line-through; color: var(--ink-45); }
+  .mini-row .pr { margin-left: auto; font: 10px var(--mono); color: var(--ink-45); }
+  .mini-row.pending { opacity: 0.5; }
+  .card:hover .mini-row.pending { opacity: 1; transform: translateY(0); }
+  .mini-row.pending { transform: translateY(-3px); }
+
+  /* 07: JWT */
+  .jwt { font: 11.5px/1.6 var(--mono); word-break: break-all; width: 100%; }
+  .jwt .h { color: var(--ink); }
+  .jwt .p { color: var(--ink-45); }
+  .jwt .s { color: var(--accent); }
+  .jwt-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--ink-60); }
+  .jwt-legend span::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+  .jwt-legend .lh { color: var(--ink); } .jwt-legend .lp { color: var(--ink-45); } .jwt-legend .ls { color: var(--accent); }
+
+  /* 08: bundle bars */
+  .bars { display: grid; gap: 10px; width: 100%; }
+  .bar-row { display: grid; grid-template-columns: 48px 1fr 64px; gap: 10px; align-items: center; font-size: 12px; }
+  .bar-row span:first-child { color: var(--ink-60); }
+  .bar-row span:last-child { font: 500 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .track { height: 10px; border-radius: 5px; background: var(--ink-4); overflow: hidden; }
+  .fill { height: 100%; border-radius: 5px; background: var(--ink-45); transform-origin: left; transition: transform 600ms var(--ease-drawer); }
+  .fill.after { background: var(--accent); }
+  .card:hover .fill.after { transform: scaleX(0.92); }
+
+  /* 09: cache */
+  .cache { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .cache div { border-radius: 12px; border: 1px solid var(--ink-8); background: var(--paper); padding: 10px 12px; }
+  .cache small { font: 500 10px var(--mono); color: var(--ink-45); letter-spacing: 0.04em; }
+  .cache b { display: block; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cache .hit b { color: var(--accent); }
+
+  /* 10: event timeline */
+  .timeline { width: 100%; display: grid; gap: 10px; }
+  .tl { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .tl-track { position: relative; height: 8px; border-radius: 4px; background: var(--ink-4); }
+  .tl-seg { position: absolute; top: 0; height: 100%; border-radius: 4px; }
+  .tl-api { left: 0; width: 6%; background: var(--accent); }
+  .tl-job { left: 4%; width: 92%; background: var(--ink-12); transform-origin: left; transition: transform 900ms var(--ease-drawer); }
+  .card:hover .tl-job { transform: scaleX(1.02); }
+  .tl small { font: 10.5px var(--mono); color: var(--ink-60); display: flex; justify-content: space-between; }
+
+  /* 11: containers */
+  .stack { width: 100%; display: grid; gap: 5px; }
+  .ctr { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--ink-12); background: var(--paper); font: 11px var(--mono); transition: transform 300ms var(--ease-out); }
+  .ctr span { color: var(--ink-45); }
+  .card:hover .ctr:nth-child(1) { transform: translateX(4px); }
+  .card:hover .ctr:nth-child(2) { transform: translateX(8px); transition-delay: 40ms; }
+  .card:hover .ctr:nth-child(3) { transform: translateX(12px); transition-delay: 80ms; }
+
+  /* 12: pipeline */
+  .pipe { width: 100%; display: grid; gap: 6px; }
+  .step { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .tick { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); }
+  .tick svg { width: 9px; height: 9px; }
+  .step.x .tick { background: var(--accent); }
+  .step small { margin-left: auto; font: 10.5px var(--mono); color: var(--ink-45); }
+
+  /* 13: AI */
+  .ai { width: 100%; display: grid; gap: 8px; }
+  .ai-input { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--ink-12); background: var(--paper); font-size: 12.5px; }
+  .ai-out {
+    padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.5;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); background: var(--accent-soft);
+  }
+  .ai-out small { display: block; font-size: 10.5px; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+  /* Visible at rest; hovering replays the "streaming in" reveal */
+  .card:hover .ai-text, .card:focus-visible .ai-text { animation: stream 900ms var(--ease-out); }
+  @keyframes stream { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+  /* ── Footer ─────────────────────────────────────────────────────────────── */
+  footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 28px; font-size: 12.5px; color: var(--ink-60); }
+  kbd { font: 11px var(--mono); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--ink-12); }
+
+  /* ── Detail dialog ─────────────────────────────────────────────────────── */
+  dialog {
+    width: min(560px, calc(100% - 32px)); max-height: min(720px, calc(100dvh - 32px));
+    padding: 0; border: 1px solid var(--ink-12); border-radius: 24px; overflow: auto;
+    background: var(--paper); color: var(--ink);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 24px 64px -12px rgb(0 0 0 / 0.28);
+  }
+  dialog::backdrop { background: rgb(0 0 0 / 0.32); backdrop-filter: blur(2px); }
+  .d-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--ink-8); }
+  /* minmax(0, 1fr): long command lines scroll inside .cmd instead of widening the dialog */
+  .d-body { padding: 22px 24px 26px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .d-body h2 { margin: 6px 0 0; font-size: 24px; letter-spacing: -0.03em; line-height: 1.15; font-weight: 600; }
+  .d-objective { margin: 8px 0 0; color: var(--ink-60); }
+  .d-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-45); margin: 0 0 10px; }
+  .d-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .d-list li { display: grid; grid-template-columns: 14px 1fr; gap: 10px; font-size: 14px; }
+  .d-list li::before { content: ''; width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--accent); }
+  .d-metric { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--accent-soft); }
+  .d-metric b { font-size: 22px; letter-spacing: -0.03em; color: var(--accent); }
+  .d-metric span { font-size: 13px; color: var(--ink-60); }
+  .cmd { position: relative; border-radius: 14px; background: var(--ink); color: var(--paper); }
+  .cmd pre { margin: 0; padding: 14px 16px; padding-right: 72px; font: 12.5px/1.7 var(--mono); overflow-x: auto; white-space: pre; }
+  .copy {
+    position: absolute; top: 10px; right: 10px; border: 0; cursor: pointer; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 500;
+    background: color-mix(in srgb, var(--paper) 14%, transparent); color: var(--paper);
+    transition: background-color 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+  .copy:active { transform: scale(0.95); }
+  .copy span { display: inline-block; transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out); }
+  .d-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+    text-decoration: none; border: 1px solid var(--ink-12); transition: transform 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:not(.primary):hover { background: var(--ink-4); }
+    .copy:hover { background: color-mix(in srgb, var(--paper) 22%, transparent); }
+  }
+
+  /* ── Entrance (once) ────────────────────────────────────────────────────── */
+  .tile { animation: rise 600ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 35ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="bar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span> AWDF · ITUE301</div>
+    <div class="bar-end">
+    <span class="status" id="status" role="status"><span class="live-dot"></span><span id="status-text">Checking…</span></span>
+    <button class="icon-btn" id="theme" aria-label="Toggle dark mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    </div>
+  </header>
+
+  <nav class="filters" aria-label="Filter practicals">
+    <span class="filter-pill" aria-hidden="true"></span>
+    <button class="filter" data-filter="all" aria-pressed="true">All</button>
+    <button class="filter" data-filter="react" aria-pressed="false">React</button>
+    <button class="filter" data-filter="node" aria-pressed="false">Node &amp; Mongo</button>
+    <button class="filter" data-filter="perf" aria-pressed="false">Performance</button>
+    <button class="filter" data-filter="devops" aria-pressed="false">DevOps</button>
+    <button class="filter" data-filter="ai" aria-pressed="false">AI</button>
+  </nav>
+
+  <main class="grid">
+    <section class="tile hero" style="--i:0">
+      <div>
+        <div class="eyebrow"><span class="dot"></span> Advanced Web Development Frameworks</div>
+        <h1>Thirteen practicals.<br /><em>One app, grown up.</em></h1>
+        <p>A static React page becomes a containerised, tested, AI-assisted full-stack task manager, one practical at a time. Each card opens what was built and how to run it.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>13</b><span>practicals</span></div>
+        <div class="stat"><b>13</b><span>automated tests</span></div>
+        <div class="stat"><b>−65%</b><span>first-load JS</span></div>
+      </div>
+    </section>
+
+    <!-- 01 -->
+    <button class="tile card" data-id="1" data-tags="react" style="grid-area:p1; --i:1">
+      <div class="card-top"><span class="num">01</span><span class="tag">React</span></div>
+      <div class="viz">
+        <div class="tree" aria-hidden="true">
+          <span class="node root">App</span>
+          <div class="kids"><span class="node">Header</span><span class="node">About</span><span class="node">Skills</span><span class="node">Footer</span></div>
+        </div>
+      </div>
+      <div><h3>Components &amp; props</h3><p>Vite portfolio from reusable parts.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 02 -->
+    <button class="tile card" data-id="2" data-tags="react" style="grid-area:p2; --i:2">
+      <div class="card-top"><span class="num">02</span><span class="tag">React</span></div>
+      <div class="viz">
+        <div class="routes" aria-hidden="true">
+          <span class="route-hl"></span>
+          <span class="route"><b>/</b>Home</span>
+          <span class="route"><b>/projects</b>Projects</span>
+          <span class="route"><b>/contact</b>useState</span>
+        </div>
+      </div>
+      <div><h3>State &amp; routing</h3><p>React Router, no page reloads.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 03 -->
+    <button class="tile card" data-id="3" data-tags="react" style="grid-area:p3; --i:3">
+      <div class="card-top"><span class="num">03</span><span class="tag">React · REST</span></div>
+      <div class="viz">
+        <div class="states" aria-hidden="true">
+          <div class="state"><small>Loading</small><span class="spin"></span></div>
+          <div class="state"><small>Error</small><span class="err">Could not load</span><span class="retry">Retry</span></div>
+          <div class="state"><small>Success</small><span class="line"></span><span class="line short"></span><span class="line"></span></div>
+        </div>
+      </div>
+      <div><h3>API integration</h3><p>GitHub repos with loading, error, retry and search.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 04 -->
+    <button class="tile card" data-id="4" data-tags="node" style="grid-area:p4; --i:4">
+      <div class="card-top"><span class="num">04</span><span class="tag">Express</span></div>
+      <div class="viz">
+        <div class="endpoints" aria-hidden="true">
+          <div class="ep"><span class="verb">GET</span><span>/tasks</span><span class="code">200</span></div>
+          <div class="ep"><span class="verb">POST</span><span>/tasks</span><span class="code">201</span></div>
+          <div class="ep"><span class="verb">PUT</span><span>/tasks/:id</span><span class="code">200</span></div>
+          <div class="ep"><span class="verb">DELETE</span><span>/tasks/:id</span><span class="code">404</span></div>
+        </div>
+      </div>
+      <div><h3>RESTful API</h3><p>CRUD + middleware pipeline.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 05 -->
+    <button class="tile card" data-id="5" data-tags="node" style="grid-area:p5; --i:5">
+      <div class="card-top"><span class="num">05</span><span class="tag">MongoDB</span></div>
+      <div class="viz">
+        <div class="schema" aria-hidden="true">
+          <b>title</b>: String, <i>required</i><br />
+          <b>completed</b>: Boolean = false<br />
+          <b>priority</b>: <i>enum</i> low|med|high<br />
+          <b>createdAt</b>: Date.now
+        </div>
+      </div>
+      <div><h3>Mongoose schema</h3><p>Validation before the database.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 06 -->
+    <button class="tile card" data-id="6" data-tags="react node" style="grid-area:p6; --i:6">
+      <div class="card-top"><span class="num">06</span><span class="tag">Full stack</span></div>
+      <div class="viz">
+        <div class="flow" aria-hidden="true">
+          <div class="flow-row">
+            <div class="box"><b>React</b><span>:5173</span></div>
+            <span class="wire"></span>
+            <div class="box"><b>Express</b><span>:5000</span></div>
+            <span class="wire second"></span>
+            <div class="box"><b>MongoDB</b><span>:27017</span></div>
+          </div>
+          <div class="flow-steps">
+            <span class="chip on">optimistic create</span><span class="chip">PUT toggle</span><span class="chip">confirm delete</span><span class="chip">toasts</span><span class="chip">CORS</span>
+          </div>
+          <div class="mini">
+            <div class="mini-row pending"><span class="cb"></span><span class="t">Write E2E test</span><span class="pr">saving…</span></div>
+            <div class="mini-row"><span class="cb"></span><span class="t">Review PR</span><span class="pr">medium</span></div>
+            <div class="mini-row done"><span class="cb"></span><span class="t">Fix bug</span><span class="pr">high</span></div>
+          </div>
+        </div>
+      </div>
+      <div><h3>Full-stack integration</h3><p>The React UI does full CRUD against our own API, and everything persists in MongoDB. Browser-tested from create to delete, with a reload in between.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 07 -->
+    <button class="tile card" data-id="7" data-tags="node react" style="grid-area:p7; --i:7">
+      <div class="card-top"><span class="num">07</span><span class="tag">Auth</span></div>
+      <div class="viz">
+        <div style="width:100%" aria-hidden="true">
+          <div class="jwt"><span class="h">eyJhbGciOiJIUzI1NiJ9</span>.<span class="p">eyJpZCI6IjZhZDg3MTEzIiwiZXhwIjoxNzk...</span>.<span class="s">Xk2pQ9vR3mT8wLz</span></div>
+          <div class="jwt-legend"><span class="lh">header</span><span class="lp">payload · 1h</span><span class="ls">signature</span></div>
+        </div>
+      </div>
+      <div><h3>JWT authentication</h3><p>bcrypt, protected routes, server-side validation.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 08 -->
+    <button class="tile card" data-id="8" data-tags="react perf" style="grid-area:p8; --i:8">
+      <div class="card-top"><span class="num">08</span><span class="tag">Performance</span></div>
+      <div class="viz">
+        <div class="bars" aria-hidden="true">
+          <div class="bar-row"><span>Before</span><span class="track"><span class="fill" style="display:block"></span></span><span>549 kB</span></div>
+          <div class="bar-row"><span>After</span><span class="track"><span class="fill after" style="display:block; width:30%"></span></span><span>164 kB</span></div>
+        </div>
+      </div>
+      <div><h3>Lazy loading</h3><p>Route chunks + an on-demand chart. Slow 3G load 3.5 s → 1.8 s.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 09 -->
+    <button class="tile card" data-id="9" data-tags="node perf" style="grid-area:p9; --i:9">
+      <div class="card-top"><span class="num">09</span><span class="tag">Caching</span></div>
+      <div class="viz">
+        <div class="cache" aria-hidden="true">
+          <div class="hit"><small>HIT</small><b>17ms</b></div>
+          <div><small>NO CACHE</small><b>33ms</b></div>
+        </div>
+      </div>
+      <div><h3>node-cache</h3><p>TTL + invalidation on write.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 10 -->
+    <button class="tile card" data-id="10" data-tags="node perf" style="grid-area:p10; --i:10">
+      <div class="card-top"><span class="num">10</span><span class="tag">Events</span></div>
+      <div class="viz">
+        <div class="timeline" aria-hidden="true">
+          <div class="tl"><div class="tl-track"><span class="tl-seg tl-api"></span></div><small><span>201 sent</span><span>6 ms</span></small></div>
+          <div class="tl"><div class="tl-track"><span class="tl-seg tl-job"></span></div><small><span>notification</span><span>+2000 ms</span></small></div>
+        </div>
+      </div>
+      <div><h3>EventEmitter</h3><p>Respond first, notify later.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 11 -->
+    <button class="tile card" data-id="11" data-tags="devops" style="grid-area:p11; --i:11">
+      <div class="card-top"><span class="num">11</span><span class="tag">Docker</span></div>
+      <div class="viz">
+        <div class="stack" aria-hidden="true">
+          <div class="ctr">frontend<span>5173</span></div>
+          <div class="ctr">backend<span>5000</span></div>
+          <div class="ctr">mongodb<span>27017</span></div>
+        </div>
+      </div>
+      <div><h3>Compose</h3><p>One command, three services.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 12 -->
+    <button class="tile card" data-id="12" data-tags="devops" style="grid-area:p12; --i:12">
+      <div class="card-top"><span class="num">12</span><span class="tag">CI</span></div>
+      <div class="viz">
+        <div class="pipe" aria-hidden="true">
+          <div class="step"><span class="tick"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5.2l2 2L8 3"/></svg></span>lint<small>eslint</small></div>
+          <div class="step"><span class="tick"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5.2l2 2L8 3"/></svg></span>test<small>10 / 10</small></div>
+          <div class="step"><span class="tick"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5.2l2 2L8 3"/></svg></span>build<small>vite</small></div>
+        </div>
+      </div>
+      <div><h3>GitHub Actions</h3><p>Lint → test → build on push.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+
+    <!-- 13 -->
+    <button class="tile card" data-id="13" data-tags="ai react node" style="grid-area:p13; --i:13">
+      <div class="card-top"><span class="num">13</span><span class="tag">AI</span></div>
+      <div class="viz">
+        <div class="ai" aria-hidden="true">
+          <div class="ai-input">Prepare for AWDF viva</div>
+          <div class="ai-out"><small>✦ AI suggestion · high</small><span class="ai-text">List the 13 practicals, revise each key question, rehearse one demo end to end.</span></div>
+        </div>
+      </div>
+      <div><h3>AI integration</h3><p>Server-side key, editable suggestions, graceful fallback.</p></div>
+      <span class="open-hint" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l6-6M4 3h5v5"/></svg></span>
+    </button>
+  </main>
+
+  <footer>
+    <span>Heet · B.Tech, CHARUSAT · ITUE301</span>
+    <span>Click a card for details · <kbd>Esc</kbd> to close</span>
+  </footer>
+</div>
+
+<dialog id="detail" aria-labelledby="d-title">
+  <div class="d-head">
+    <span class="num" id="d-num"></span>
+    <button class="icon-btn" id="d-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="d-body">
+    <div>
+      <span class="tag" id="d-tag"></span>
+      <h2 id="d-title"></h2>
+      <p class="d-objective" id="d-objective"></p>
+    </div>
+    <div class="d-metric" id="d-metric"></div>
+    <p class="status" id="d-live-status"><span class="live-dot"></span><span></span></p>
+    <div><p class="d-label">What's built</p><ul class="d-list" id="d-built"></ul></div>
+    <div>
+      <p class="d-label">Run it</p>
+      <div class="cmd"><pre id="d-run"></pre><button class="copy" id="d-copy"><span>Copy</span></button></div>
+    </div>
+    <div class="d-actions">
+      <a class="btn primary" id="d-live" href="#" target="_blank" rel="noopener">Open live app <span aria-hidden="true">↗</span></a>
+      <a class="btn" id="d-readme" href="#">Read the README</a>
+      <a class="btn" id="d-folder" href="#">Open folder</a>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  const P = {
+    1: {
+      tag: 'React', title: 'Introduction to React and Component Architecture',
+      objective: 'Set up React with Vite and build a static UI from independently structured, reusable components.',
+      metric: ['6', 'components, all fed by props from App.jsx'],
+      built: ['Header, About, Skills, Projects and Footer components', 'Data flows from App.jsx as props (name, bio, skillList, themeColor)', 'NavBar highlights the section in view (IntersectionObserver)', 'Theme colour passed as a prop and applied inline'],
+      run: 'cd practical-1\nnpm install\nnpm run dev',
+    },
+    2: {
+      tag: 'React', title: 'State Management and Routing in React',
+      objective: 'Reactive state with useState and multi-page navigation with React Router, without full page reloads.',
+      metric: ['4', 'routes: Home, Projects, Contact and a custom 404'],
+      built: ['BrowserRouter + Routes, navigation with NavLink', 'Controlled message input with live preview and character count', 'Second useState toggles a help hint', 'Dark/light mode applied to the root element'],
+      run: 'cd practical-2\nnpm install\nnpm run dev',
+    },
+    3: {
+      tag: 'React · REST', title: 'API Integration and Data Rendering in React',
+      objective: 'Consume a REST API and handle asynchronous data with loading and error states.',
+      metric: ['3', 'request states handled: loading, error, success'],
+      built: ['GitHub repos fetched in useEffect on mount', 'Spinner and ErrorMessage components', 'Retry re-runs the effect; search filters by name', 'Star count and language on each repo card'],
+      run: 'cd practical-3\nnpm install\nnpm run dev   # → /projects',
+    },
+    4: {
+      tag: 'Express', title: 'Building a RESTful API with Node.js and Express',
+      objective: 'A RESTful backend with complete CRUD endpoints and an Express middleware pipeline.',
+      metric: ['6', 'status codes used correctly: 200 201 400 404 415 500'],
+      built: ['GET / POST / PUT / DELETE on /tasks (in-memory)', 'Request logger: method, URL and timestamp', 'Content-Type guard (415) and route-level id validation', 'JSON 404 handler + global error handler registered last'],
+      run: 'cd practical-4\nnpm install\nnpm start     # → http://localhost:5000/tasks',
+    },
+    5: {
+      tag: 'MongoDB', title: 'MongoDB Integration and Schema Design with Mongoose',
+      objective: 'Connect MongoDB to Express and enforce data validation through a Mongoose schema.',
+      metric: ['400', 'structured JSON for every validation failure'],
+      built: ['Task schema: required title, defaults, priority enum', 'Pre-save hook trims the title', 'try/catch + next(err) in every async handler', 'Connection string from .env; data survives restarts'],
+      run: 'cd practical-5\nnpm install\ncp .env.example .env\nnpm start',
+    },
+    6: {
+      tag: 'Full stack', title: 'Full Stack Integration: React + Node + MongoDB',
+      objective: 'Wire the React frontend to the Express/MongoDB backend as one working full-stack application.',
+      metric: ['E2E', 'browser test passes: create, toggle, rename, reload, delete'],
+      built: ['CORS on Express, one shared BASE_URL in api.js', 'Optimistic create, rolled back if the server rejects it', 'Per-row busy states and toast notifications', 'Native <dialog> confirmation before delete'],
+      run: '# terminal 1\ncd practical-6/backend && npm install && cp .env.example .env && npm start\n# terminal 2\ncd practical-6/frontend && npm install && npm run dev',
+    },
+    7: {
+      tag: 'Auth', title: 'Authentication and Middleware Pipeline',
+      objective: 'JWT-based authentication and input validation as part of the Express middleware pipeline.',
+      metric: ['401', 'for missing, tampered and expired tokens, and the UI redirects to login'],
+      built: ['Register with bcrypt hashing (cost 10); login signs a 1-hour JWT', 'Auth middleware protects every /tasks route', 'Whitelisting validation + sanitisation middleware', '/auth/me, logout, tasks scoped per user'],
+      run: 'cd practical-7/backend && npm install && cp .env.example .env && npm start\ncd practical-7/frontend && npm install && npm run dev',
+    },
+    8: {
+      tag: 'Performance', title: 'Performance Optimisation and Lazy Loading in React',
+      objective: 'Improve frontend performance with lazy loading and code splitting, and measure the result.',
+      metric: ['−65%', 'JS on first visit (159.8 → 56.1 KB); Slow 3G 3507 → 1831 ms'],
+      built: ['React.lazy + Suspense for 4 routes', 'recharts chart downloaded only on "Show chart"', '300 ms delayed fallback, so nothing flickers on fast networks', 'memo + useCallback removed a whole-list re-render'],
+      run: 'cd practical-8/frontend\nnpm install\nnpm run build   # see the separate chunks\nnpm run dev',
+    },
+    9: {
+      tag: 'Caching', title: 'In-Memory Caching and Query Optimisation',
+      objective: 'Server-side caching, and its measured impact on API response time.',
+      metric: ['17 ms', 'average cache HIT vs 32.5 ms uncached (2000 tasks)'],
+      built: ['node-cache with a 60 s TTL; X-Cache: HIT / MISS header', 'Invalidation on every POST, PUT and DELETE', 'Single-task cache key + /debug/cache hit/miss counters', '.lean() queries and a compound { user, createdAt } index'],
+      run: 'cd practical-9/backend\nnpm install && cp .env.example .env && npm start\nnpm run benchmark',
+    },
+    10: {
+      tag: 'Events', title: 'Asynchronous Processing with Event-Driven Architecture',
+      objective: 'Background processing with Node’s native EventEmitter and no external dependencies.',
+      metric: ['6 ms', 'API response, while the 2000 ms notification finishes later'],
+      built: ['events.js emitter + listeners.js, registered at startup', 'task-created emitted after res.json()', 'task-deleted event with its own message', "'error' listener catches handler failures without a crash"],
+      run: 'cd practical-10/backend\nnpm install && cp .env.example .env && npm start\n# create a task and watch the console order',
+    },
+    11: {
+      tag: 'Docker', title: 'Containerisation with Docker and Docker Compose',
+      objective: 'Containerise the full-stack app and orchestrate its services with Docker Compose.',
+      metric: ['1', 'command starts frontend, backend and MongoDB together'],
+      built: ['Backend Dockerfile with layer-cached npm ci', 'Multi-stage frontend: Node build → nginx (~50 MB)', 'MongoDB healthcheck; backend reaches it as "mongodb"', '.dockerignore files and a named volume for data'],
+      run: 'cd practical-11\ndocker compose up --build\n# → http://localhost:5173',
+    },
+    12: {
+      tag: 'CI', title: 'CI/CD Pipeline with GitHub Actions',
+      objective: 'Automate testing on every push with a CI pipeline, and diagnose a failing run.',
+      metric: ['10 / 10', 'Jest + Supertest tests; a broken test turns the run red'],
+      built: ['app.js split from server.js so it can be tested', 'Lint job → test job (needs: lint) with a MongoDB service', 'Runs on push and on pull requests to main', 'ESLint caught two real React bugs, now fixed'],
+      run: 'cd practical-12/backend\nnpm install && npm run lint && npm test',
+    },
+    13: {
+      tag: 'AI', title: 'AI API Integration into a Web Application',
+      objective: 'Integrate an external AI service into the app securely and responsibly.',
+      metric: ['0', 'API keys in the frontend; the app keeps working when the AI fails'],
+      built: ['"Suggest with AI": description + priority from the title', 'Key read from .env and called only from Express', 'Editable suggestion card with an AI disclaimer', 'Fallback on errors, 1 request per task per minute, 13 tests'],
+      run: 'cd practical-13/backend && npm install && cp .env.example .env\n# add OPENAI_API_KEY to .env (optional)\nnpm start\ncd ../frontend && npm install && npm run dev',
+    },
+  };
+
+  /* ── Theme toggle (remembered per browser, if storage is available) ─────── */
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch {}
+  document.getElementById('theme').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch {}
+  });
+
+  /* ── Filters: sliding pill + dim non-matching cards (layout never jumps) ── */
+  const filters = [...document.querySelectorAll('.filter')];
+  const pill = document.querySelector('.filter-pill');
+  const cards = [...document.querySelectorAll('.card')];
+  function movePill(btn, instant) {
+    if (instant) pill.style.transition = 'none';
+    pill.style.width = btn.offsetWidth + 'px';
+    pill.style.transform = `translateX(${btn.offsetLeft}px)`;
+    if (instant) requestAnimationFrame(() => (pill.style.transition = ''));
+  }
+  filters.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      filters.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      movePill(btn);
+      const f = btn.dataset.filter;
+      cards.forEach((c) => c.classList.toggle('dim', f !== 'all' && !c.dataset.tags.split(' ').includes(f)));
+    })
+  );
+  const syncPill = () => movePill(filters.find((b) => b.getAttribute('aria-pressed') === 'true'), true);
+  document.fonts ? document.fonts.ready.then(syncPill) : syncPill();
+  addEventListener('resize', syncPill);
+
+  /* ── Live status: each practical runs on localhost:3000 + its number ─────── */
+  // Practicals 4 and 5 are APIs only, so their link opens the /tasks JSON.
+  function liveUrl(id) {
+    id = Number(id);
+    return `http://localhost:${3000 + id}/${id === 4 || id === 5 ? 'tasks' : ''}`;
+  }
+  cards.forEach((c) => c.querySelector('.num').insertAdjacentHTML('beforeend', '<span class="live-dot" title="Running"></span>'));
+  async function ping(id) {
+    try {
+      // no-cors: we can't read the response, but a resolved promise means the server answered
+      await fetch(liveUrl(id), { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(2500) });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async function refreshStatus() {
+    const up = await Promise.all(cards.map(async (c) => {
+      const ok = await ping(c.dataset.id);
+      c.classList.toggle('is-live', ok);
+      return ok;
+    }));
+    const n = up.filter(Boolean).length;
+    $('status').classList.toggle('on', n > 0);
+    $('status-text').innerHTML = n ? `${n} / 13 running` : 'Not running <code>· docker compose up -d</code>';
+  }
+
+  /* ── Detail dialog: grows out of the card that opened it ────────────────── */
+  const dialog = document.getElementById('detail');
+  const $ = (id) => document.getElementById(id);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let originCard = null;
+
+  function fill(id) {
+    const p = P[id];
+    const n = String(id).padStart(2, '0');
+    $('d-num').textContent = `Practical ${n}`;
+    $('d-tag').textContent = p.tag;
+    $('d-title').textContent = p.title;
+    $('d-objective').textContent = p.objective;
+    $('d-metric').innerHTML = `<b></b><span></span>`;
+    $('d-metric').querySelector('b').textContent = p.metric[0];
+    $('d-metric').querySelector('span').textContent = p.metric[1];
+    $('d-built').replaceChildren(...p.built.map((t) => Object.assign(document.createElement('li'), { textContent: t })));
+    $('d-run').textContent = p.run;
+    $('d-readme').href = `practical-${id}/README.md`;
+    $('d-folder').href = `practical-${id}/`;
+    const live = liveUrl(id);
+    const running = document.querySelector(`.card[data-id="${id}"]`).classList.contains('is-live');
+    $('d-live').href = live;
+    $('d-live-status').classList.toggle('on', running);
+    $('d-live-status').lastElementChild.textContent = running
+      ? `Running at ${live.replace('http://', '')}`
+      : `Not running. Start everything with: docker compose up -d`;
+    $('d-copy').firstElementChild.textContent = 'Copy';
+  }
+
+  function originTransform(card) {
+    const c = card.getBoundingClientRect();
+    const d = dialog.getBoundingClientRect();
+    const dx = c.left + c.width / 2 - (d.left + d.width / 2);
+    const dy = c.top + c.height / 2 - (d.top + d.height / 2);
+    return `translate(${dx * 0.35}px, ${dy * 0.35}px) scale(0.92)`;
+  }
+
+  cards.forEach((card) =>
+    card.addEventListener('click', () => {
+      originCard = card;
+      fill(card.dataset.id);
+      dialog.showModal();
+      dialog.scrollTop = 0;
+      if (!reduced.matches) {
+        dialog.animate(
+          [{ opacity: 0, transform: originTransform(card) }, { opacity: 1, transform: 'none' }],
+          { duration: 320, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' }
+        );
+      }
+    })
+  );
+
+  function close() {
+    if (!dialog.open) return;
+    if (reduced.matches || !originCard) return dialog.close();
+    const a = dialog.animate(
+      [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: originTransform(originCard) }],
+      { duration: 160, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' }
+    );
+    a.onfinish = () => dialog.close();
+  }
+  $('d-close').addEventListener('click', close);
+  dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); }); // backdrop click
+  dialog.addEventListener('close', () => originCard && originCard.focus({ preventScroll: true }));
+
+  refreshStatus();
+  setInterval(refreshStatus, 10000);
+
+  /* ── Copy run commands ───────────────────────────────────────────────── */
+  $('d-copy').addEventListener('click', async () => {
+    const label = $('d-copy').firstElementChild;
+    try {
+      await navigator.clipboard.writeText($('d-run').textContent);
+      label.textContent = 'Copied';
+    } catch {
+      label.textContent = 'Select & copy';
+    }
+    label.animate([{ transform: 'translateY(4px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 200, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+    clearTimeout(label._t);
+    label._t = setTimeout(() => (label.textContent = 'Copy'), 1600);
+  });
+</script>
+</body>
+</html>
