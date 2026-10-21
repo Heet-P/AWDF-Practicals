@@ -1,0 +1,73 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const logger = require('./middleware/logger');
+const auth = require('./middleware/auth');
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
+const taskRoutes = require('./routes/tasks');
+const authRoutes = require('./routes/auth');
+const { cache, enabled: cacheEnabled } = require('./cache');
+
+// Refuse to start without a signing secret (it must come from .env, never the code)
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is not set. Copy .env.example to .env and fill it in.');
+  process.exit(1);
+}
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// 0. CORS — lets the React dev server (localhost:5173) call this API
+app.use(cors());
+
+// 1. Body parser — without this req.body is undefined on POST/PUT
+app.use(express.json());
+
+// 2. Global request logger
+app.use(logger);
+
+// 3. Routes
+app.get('/', (req, res) => res.json({ message: 'Task Manager API is running' }));
+app.use('/auth', authRoutes);
+// Every /tasks route is protected: [auth] -> [validation] -> controller
+app.use('/tasks', auth, taskRoutes);
+
+// Cache hit/miss counters (node-cache tracks these for us)
+app.get('/debug/cache', (req, res) => {
+  const { hits, misses, keys } = cache.getStats();
+  const total = hits + misses;
+  res.json({
+    enabled: cacheEnabled,
+    ttlSeconds: cache.options.stdTTL,
+    hits,
+    misses,
+    hitRate: total ? `${((hits / total) * 100).toFixed(1)}%` : 'n/a',
+    keys,
+    cachedKeys: cache.keys(),
+  });
+});
+
+// Deliberately throws so the global error handler can be demonstrated
+app.get('/debug/error', () => {
+  throw new Error('Deliberate test error');
+});
+
+// 4. 404 for anything that did not match a route
+app.use(notFound);
+
+// 5. Global error handler — must be registered LAST
+app.use(errorHandler);
+
+// Connect to MongoDB first, then start accepting requests
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
