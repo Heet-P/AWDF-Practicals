@@ -1,0 +1,55 @@
+:root {
+  --paper: #f5f5f2;
+  --ink: #141414;
+  --accent: #ff5b1f;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+html { scroll-behavior: smooth; }
+
+.container { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+
+.nav {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.nav ul { display: flex; gap: 4px; list-style: none; margin: 0 auto; padding: 10px 20px; max-width: 760px; }
+.nav a {
+  display: block; padding: 6px 12px; border-radius: 999px;
+  color: color-mix(in srgb, var(--ink) 60%, transparent); text-decoration: none; font-size: 14px;
+  transition: color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+.nav a:hover { color: var(--ink); }
+.nav a.active { color: var(--paper); background: var(--ink); }
+
+section { padding: 56px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent); }
+h1 { font-size: clamp(36px, 7vw, 56px); letter-spacing: -0.03em; line-height: 1; margin: 0 0 12px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px; color: color-mix(in srgb, var(--ink) 50%, transparent); }
+p { line-height: 1.6; margin: 0; max-width: 60ch; }
+
+.tagline { font-size: 18px; color: color-mix(in srgb, var(--ink) 65%, transparent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.chips li {
+  padding: 6px 12px; border-radius: 999px; font-size: 14px;
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); list-style: none; padding: 0; margin: 0; }
+.card {
+  padding: 20px; border-radius: 16px; background: #fff;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.card h3 { margin: 0 0 6px; font-size: 16px; }
+.card p { font-size: 14px; color: color-mix(in srgb, var(--ink) 65%, transparent); }
+
+footer { padding: 32px 0 48px; font-size: 14px; color: color-mix(in srgb, var(--ink) 55%, transparent); }
+footer a { color: var(--accent); }

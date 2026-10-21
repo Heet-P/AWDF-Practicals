@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Question papers, sample submissions and generated submission PDFs stay out of the code repo
+*.pdf
+submission/
+tools/submission/assets/
