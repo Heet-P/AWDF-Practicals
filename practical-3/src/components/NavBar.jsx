@@ -1,0 +1,29 @@
+import { NavLink } from 'react-router-dom';
+
+const links = [
+  { to: '/', label: 'Home' },
+  { to: '/projects', label: 'Projects' },
+  { to: '/contact', label: 'Contact' },
+];
+
+export default function NavBar({ theme, onToggleTheme }) {
+  return (
+    <nav className="nav">
+      <ul>
+        {links.map((link) => (
+          <li key={link.to}>
+            {/* NavLink (not <a>) navigates without a full page reload */}
+            <NavLink to={link.to} end className={({ isActive }) => (isActive ? 'active' : '')}>
+              {link.label}
+            </NavLink>
+          </li>
+        ))}
+        <li className="push">
+          <button className="ghost" onClick={onToggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? 'Dark' : 'Light'}
+          </button>
+        </li>
+      </ul>
+    </nav>
+  );
+}
