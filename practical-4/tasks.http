@@ -1,0 +1,37 @@
+# Open in VS Code with the REST Client extension, or copy into Postman / Thunder Client.
+@base = http://localhost:5000
+
+### List all tasks -> 200
+GET {{base}}/tasks
+
+### Get one task -> 200 / 404
+GET {{base}}/tasks/1
+
+### Create a task -> 201
+POST {{base}}/tasks
+Content-Type: application/json
+
+{ "title": "Learn middleware", "description": "Logger + error handler" }
+
+### Missing Content-Type -> 415
+POST {{base}}/tasks
+
+title=no-json
+
+### Update a task -> 200
+PUT {{base}}/tasks/1
+Content-Type: application/json
+
+{ "completed": true }
+
+### Delete a task -> 200
+DELETE {{base}}/tasks/2
+
+### Invalid id format -> 400
+GET {{base}}/tasks/abc
+
+### Unknown route -> 404 JSON
+GET {{base}}/does-not-exist
+
+### Global error handler -> 500
+GET {{base}}/debug/error
