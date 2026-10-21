@@ -1,0 +1,47 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const logger = require('./middleware/logger');
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
+const taskRoutes = require('./routes/tasks');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// 0. CORS — lets the React dev server (localhost:5173) call this API
+app.use(cors());
+
+// 1. Body parser — without this req.body is undefined on POST/PUT
+app.use(express.json());
+
+// 2. Global request logger
+app.use(logger);
+
+// 3. Routes
+app.get('/', (req, res) => res.json({ message: 'Task Manager API is running' }));
+app.use('/tasks', taskRoutes);
+
+// Deliberately throws so the global error handler can be demonstrated
+app.get('/debug/error', () => {
+  throw new Error('Deliberate test error');
+});
+
+// 4. 404 for anything that did not match a route
+app.use(notFound);
+
+// 5. Global error handler — must be registered LAST
+app.use(errorHandler);
+
+// Connect to MongoDB first, then start accepting requests
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
